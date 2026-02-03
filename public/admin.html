@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>K534 Admin</title>
+  <style>
+    :root{
+      --bg:#050814;
+      --panel: rgba(255,255,255,.06);
+      --stroke: rgba(255,255,255,.10);
+      --text:#eaf0ff;
+      --muted:#aab6d6;
+      --accent:#7aa8ff;
+      --gold:#ffd37a;
+      --danger:#ff5c7a;
+      --ok:#8ff2b1;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(900px 600px at 50% 18%, rgba(122,168,255,.18), transparent 60%),
+        radial-gradient(800px 500px at 30% 100%, rgba(255,211,122,.10), transparent 60%),
+        var(--bg);
+    }
+    header{
+      position:sticky; top:0;
+      backdrop-filter: blur(12px);
+      background: rgba(5,8,20,.55);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      z-index: 5;
+    }
+    .wrap{ max-width: 1100px; margin:0 auto; padding: 14px 16px; }
+    .row{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+    .brand{ font-weight: 900; letter-spacing: .4px; }
+    .pill{
+      font-size:12px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      color: var(--muted);
+      display:flex; gap:8px; align-items:center;
+    }
+    .dot{
+      width:8px; height:8px; border-radius:999px;
+      background: var(--gold);
+      box-shadow: 0 0 12px rgba(255,211,122,.45);
+    }
+
+    main{ max-width: 1100px; margin: 0 auto; padding: 20px 16px 42px; }
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 14px;
+      align-items:start;
+    }
+    .card{
+      background: var(--panel);
+      border: 1px solid var(--stroke);
+      border-radius: 18px;
+      box-shadow: 0 20px 50px rgba(0,0,0,.25);
+      overflow:hidden;
+    }
+    .pad{ padding: 16px; }
+
+    .col-7{ grid-column: span 7; }
+    .col-5{ grid-column: span 5; }
+    @media (max-width: 980px){
+      .col-7, .col-5{ grid-column: span 12; }
+    }
+
+    h2{ margin:0 0 8px; font-size:18px; }
+    .muted{ color:var(--muted); }
+    .small{ font-size:12px; color:var(--muted); line-height:1.45; }
+
+    .btn{
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 14px;
+      cursor:pointer;
+      font-weight: 800;
+    }
+    .btn.primary{
+      background: rgba(122,168,255,.92);
+      color:#061022;
+      border-color: rgba(122,168,255,.55);
+    }
+    .btn.gold{
+      background: rgba(255,211,122,.92);
+      color:#201606;
+      border-color: rgba(255,211,122,.55);
+    }
+    .btn.danger{
+      background: rgba(255,92,122,.16);
+      border-color: rgba(255,92,122,.35);
+      color:#ffd7de;
+    }
+    .btn:disabled{ opacity:.45; cursor:not-allowed; }
+
+    .field{
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.22);
+      color: var(--text);
+    }
+
+    .hr{ height:1px; background: rgba(255,255,255,.10); margin: 14px 0; }
+    .kpis{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 10px;
+    }
+    @media (max-width: 520px){
+      .kpis{ grid-template-columns: 1fr; }
+    }
+    .kpi{
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      border-radius: 16px;
+      padding: 12px;
+    }
+    .kpi .n{ font-size: 22px; font-weight: 900; }
+    .kpi .l{ font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    .msg{
+      margin-top: 10px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      border-radius: 16px;
+      padding: 12px;
+      font-size: 13px;
+      color: var(--muted);
+      white-space: pre-wrap;
+    }
+    .msg.ok{ border-color: rgba(143,242,177,.25); color: #caffdd; }
+    .msg.bad{ border-color: rgba(255,92,122,.25); color: #ffd7de; }
+
+    .preview{
+      max-height: 220px;
+      overflow:auto;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      border-radius: 16px;
+      padding: 12px;
+      font-size: 12px;
+      color: var(--muted);
+      white-space: pre-wrap;
+    }
+
+    .link{
+      color: #cfe1ff;
+      text-decoration:none;
+      border-bottom: 1px dashed rgba(122,168,255,.35);
+    }
+    .link:hover{ opacity:.9; }
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="row">
+      <div class="brand">K534 Admin Panel</div>
+      <div class="row">
+        <span class="pill"><span class="dot"></span><span id="who">Checking session…</span></span>
+        <a class="link" href="/" target="_blank" rel="noopener">Open Viewer</a>
+        <button class="btn danger" id="logoutBtn">Logout</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="grid">
+    <section class="card col-7">
+      <div class="pad">
+        <h2>Upload Participants</h2>
+        <div class="small">
+          Upload an <b>.xlsx</b> file with <b>2 columns</b> (Clan A | Clan B). First row is the clan tags, below are member names.
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="row" style="justify-content:flex-start;">
+          <input id="file" class="field" type="file" accept=".xlsx,.xls,.csv" />
+          <button id="uploadBtn" class="btn gold">Upload</button>
+          <button id="clearListBtn" class="btn danger" style="margin-left:8px;">Clear List</button>
+        </div>
+
+        <div id="uploadMsg" class="msg" style="display:none;"></div>
+
+        <div class="hr"></div>
+
+        <h2>Draw Ceremony</h2>
+        <div class="small">
+          Only <b>admin</b> can start the draw. Viewers will see the orb ceremony automatically.
+        </div>
+
+        <div class="row" style="justify-content:flex-start; margin-top:10px;">
+          <label class="small muted" style="min-width:130px;">Winners</label>
+          <input id="count" class="field" type="number" value="20" min="1" max="200" style="max-width:150px;" />
+          <button id="drawBtn" class="btn primary">Start Draw</button>
+          <button id="clearBtn" class="btn danger" style="margin-left:8px;">Clear Winners</button>
+        </div>
+
+        <div id="drawMsg" class="msg" style="display:none;"></div>
+
+        <div class="hr"></div>
+
+        <h2>Old Winners</h2>
+        <div class="small">
+          Screenshots von vergangenen Ziehungen hochladen und verwalten.
+        </div>
+
+        <div class="row" style="justify-content:flex-start; margin-top:10px;">
+          <input id="screenshotFile" class="field" type="file" accept="image/*" />
+          <button id="uploadScreenshotBtn" class="btn gold">Upload Screenshot</button>
+        </div>
+
+        <div id="screenshotMsg" class="msg" style="display:none;"></div>
+
+        <div class="hr"></div>
+
+        <div class="small" style="margin-bottom:8px;"><b>Gespeicherte Screenshots</b></div>
+        <div id="screenshotsList" class="preview">Lade...</div>
+      </div>
+    </section>
+
+    <aside class="card col-5">
+      <div class="pad">
+        <h2>Current State</h2>
+        <div class="kpis">
+          <div class="kpi">
+            <div class="n" id="poolCount">0</div>
+            <div class="l">Participants</div>
+          </div>
+          <div class="kpi">
+            <div class="n" id="clanA">—</div>
+            <div class="l">Clan A tag</div>
+          </div>
+          <div class="kpi">
+            <div class="n" id="clanB">—</div>
+            <div class="l">Clan B tag</div>
+          </div>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="small" style="margin-bottom:8px;"><b>Preview</b> (first ~40 entries)</div>
+        <div id="preview" class="preview">Loading…</div>
+
+        <div class="hr"></div>
+
+        <div class="small">
+          <b>Accounts (from server.js)</b><br/>
+          • admin → upload + draw<br/>
+          • uploader → upload only
+        </div>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<script>
+  // ===== API helpers =====
+  async function api(url, opts){
+    const r = await fetch(url, opts);
+    // /api/draw might return plain text 403 — handle both
+    const txt = await r.text();
+    try { return { ok: r.ok, json: JSON.parse(txt) }; }
+    catch { return { ok: r.ok, text: txt }; }
+  }
+
+  const whoEl = document.getElementById("who");
+  const logoutBtn = document.getElementById("logoutBtn");
+
+  const fileEl = document.getElementById("file");
+  const uploadBtn = document.getElementById("uploadBtn");
+  const uploadMsg = document.getElementById("uploadMsg");
+
+  const countEl = document.getElementById("count");
+  const drawBtn = document.getElementById("drawBtn");
+  const drawMsg = document.getElementById("drawMsg");
+
+  const poolCountEl = document.getElementById("poolCount");
+  const clanAEl = document.getElementById("clanA");
+  const clanBEl = document.getElementById("clanB");
+  const previewEl = document.getElementById("preview");
+
+  function showMsg(el, kind, msg){
+    el.style.display = "block";
+    el.className = "msg " + (kind || "");
+    el.textContent = msg;
+  }
+
+  function hideMsg(el){
+    el.style.display = "none";
+    el.textContent = "";
+  }
+
+  async function checkSession(){
+    // Your current minimal server.js does not have /api/me,
+    // so we infer role by trying /api/draw with a harmless request later.
+    whoEl.textContent = "Logged in (session active)";
+  }
+
+  function renderState(s){
+    const pool = s.pool || [];
+    poolCountEl.textContent = pool.length;
+    clanAEl.textContent = s.clanA?.tag || "—";
+    clanBEl.textContent = s.clanB?.tag || "—";
+
+    const head = pool.slice(0, 40).map(x => {
+      const name = x.n ?? x.name ?? "";
+      const clan = x.c ?? x.clanTag ?? "";
+      return `• ${name} (${clan})`;
+    }).join("\n");
+
+    previewEl.textContent = head || "No participants loaded yet.";
+  }
+
+  async function refresh(){
+    const r = await api("/api/state");
+    if(r.ok && r.json) renderState(r.json);
+    else previewEl.textContent = "Could not load state.";
+  }
+
+  uploadBtn.addEventListener("click", async () => {
+    hideMsg(uploadMsg);
+    const f = fileEl.files?.[0];
+    if(!f){ showMsg(uploadMsg, "bad", "Please choose a file first."); return; }
+
+    const fd = new FormData();
+    fd.append("file", f);
+
+    const r = await fetch("/api/upload", { method:"POST", body: fd });
+    const txt = await r.text();
+
+    if(r.ok){
+      showMsg(uploadMsg, "ok", "Upload successful.\n" + txt);
+      await refresh();
+    } else {
+      showMsg(uploadMsg, "bad", "Upload failed.\n" + txt);
+    }
+  });
+
+  document.getElementById("clearListBtn").addEventListener("click", async () => {
+    if(!confirm('Wirklich die komplette Teilnehmerliste l\u00f6schen?')) return;
+    hideMsg(uploadMsg);
+
+    const r = await fetch("/api/clear-list", { method:"POST" });
+    const txt = await r.text();
+
+    if(r.ok){
+      showMsg(uploadMsg, "ok", "Liste gel\u00f6scht!\n" + txt);
+      await refresh();
+    } else {
+      showMsg(uploadMsg, "bad", "L\u00f6schen fehlgeschlagen.\n" + txt);
+    }
+  });
+
+  drawBtn.addEventListener("click", async () => {
+    hideMsg(drawMsg);
+    const count = Number(countEl.value || 20);
+
+    const r = await fetch("/api/draw", {
+      method:"POST",
+      headers:{ "Content-Type":"application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ count })
+    });
+    const txt = await r.text();
+
+    if(r.ok){
+      showMsg(drawMsg, "ok", "Draw started.\nViewers will see the orb reveal automatically.\n" + txt);
+      await refresh();
+    } else {
+      // If uploader is logged in, this will show Forbidden
+      showMsg(drawMsg, "bad", "Draw failed (admin only).\n" + txt);
+    }
+  });
+
+  document.getElementById("clearBtn").addEventListener("click", async () => {
+    if(!confirm('Wirklich alle Gewinner l\u00f6schen?')) return;
+    hideMsg(drawMsg);
+
+    const r = await fetch("/api/clear-winners", { method:"POST" });
+    const txt = await r.text();
+
+    if(r.ok){
+      showMsg(drawMsg, "ok", "Winners cleared!\n" + txt);
+      await refresh();
+    } else {
+      showMsg(drawMsg, "bad", "Clear failed (admin only).\n" + txt);
+    }
+  });
+  // Old Winners Screenshot Upload
+  const screenshotFileEl = document.getElementById("screenshotFile");
+  const uploadScreenshotBtn = document.getElementById("uploadScreenshotBtn");
+  const screenshotMsg = document.getElementById("screenshotMsg");
+  const screenshotsListEl = document.getElementById("screenshotsList");
+
+  async function loadScreenshots(){
+    try{
+      const r = await fetch("/api/screenshots");
+      const data = await r.json();
+      
+      if(data.screenshots && data.screenshots.length > 0){
+        screenshotsListEl.innerHTML = data.screenshots.map(s => `
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 0; border-bottom:1px solid rgba(255,255,255,.05);">
+            <span style="font-size:12px;">${s}</span>
+            <button class="btn danger" style="padding:4px 8px; font-size:11px;" onclick="deleteScreenshot('${s}')">Delete</button>
+          </div>
+        `).join('');
+      } else {
+        screenshotsListEl.textContent = 'Keine Screenshots vorhanden.';
+      }
+    } catch(e){
+      screenshotsListEl.textContent = 'Fehler beim Laden.';
+    }
+  }
+
+  window.deleteScreenshot = async (filename) => {
+    if(!confirm(`Screenshot "${filename}" löschen?`)) return;
+    
+    try{
+      const r = await fetch("/api/screenshots/" + encodeURIComponent(filename), { method:"DELETE" });
+      const txt = await r.text();
+      
+      if(r.ok){
+        showMsg(screenshotMsg, "ok", "Screenshot gelöscht!");
+        await loadScreenshots();
+      } else {
+        showMsg(screenshotMsg, "bad", "Löschen fehlgeschlagen: " + txt);
+      }
+    } catch(e){
+      showMsg(screenshotMsg, "bad", e.message);
+    }
+  };
+
+  uploadScreenshotBtn.addEventListener("click", async () => {
+    hideMsg(screenshotMsg);
+    const f = screenshotFileEl.files?.[0];
+    if(!f){ showMsg(screenshotMsg, "bad", "Bitte wähle eine Bilddatei aus."); return; }
+
+    const fd = new FormData();
+    fd.append("screenshot", f);
+
+    const r = await fetch("/api/upload-screenshot", { method:"POST", body: fd });
+    const txt = await r.text();
+
+    if(r.ok){
+      showMsg(screenshotMsg, "ok", "Screenshot hochgeladen!\n" + txt);
+      screenshotFileEl.value = '';
+      await loadScreenshots();
+    } else {
+      showMsg(screenshotMsg, "bad", "Upload fehlgeschlagen.\n" + txt);
+    }
+  });
+  logoutBtn.addEventListener("click", async () => {
+    await fetch("/api/logout", { method:"POST" });
+    location.href = "/login";
+  });
+
+  checkSession();
+  refresh();
+  loadScreenshots();
+  setInterval(refresh, 2500);
+</script>
+</body>
+</html>

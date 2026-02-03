@@ -1,0 +1,994 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>K534 Event Draw</title>
+  <style>
+    :root{
+      --bg0:#02040a;
+      --panel: rgba(255,255,255,.06);
+      --stroke: rgba(255,255,255,.12);
+      --text:#eaf0ff;
+      --muted:#aab6d6;
+      --blue:#7aa8ff;
+      --gold:#ffd37a;
+      --ember:#ff8a3d;
+      --sea1:#0b6e79;   /* game-ish turquoise */
+      --sea2:#0a3a4a;
+      --sea3:#051a26;
+    }
+    *{ box-sizing:border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow-x: hidden;
+    }
+
+    /* Desktop only */
+    /* ===== VIDEO BACKGROUND ===== */
+    .bg-video {
+      position: fixed;
+      top: 0;
+      left: 0;
+      min-width: 100%;
+      min-height: 100%;
+      width: auto;
+      height: auto;
+      z-index: -2;
+      object-fit: cover;
+      background: #000;
+    }
+
+    /* Leichtes Overlay damit Text lesbar bleibt */
+    .bg{
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background: linear-gradient(
+        rgba(5,10,20,0.2),
+        rgba(5,10,20,0.35)
+      );
+      pointer-events: none;
+    }
+
+
+    header{
+      position:sticky; top:0;
+      backdrop-filter: blur(12px);
+      background: rgba(5,8,20,.55);
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      z-index: 10;
+    }
+    .wrap{ max-width: 1400px; margin:0 auto; padding: 14px 18px; }
+    .row{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .brand{ font-weight: 900; letter-spacing: .4px; display:flex; align-items:center; gap:16px; }
+    .datetime{ font-size:13px; font-weight:400; color:var(--muted); letter-spacing:0; }
+    .pill{
+      font-size:12px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.05);
+      color: var(--muted);
+      display:flex; gap:8px; align-items:center;
+    }
+    .dot{
+      width:8px; height:8px; border-radius:999px;
+      background: var(--gold);
+      box-shadow: 0 0 12px rgba(255,211,122,.45);
+    }
+
+    main{
+      max-width: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* Fixed desktop layout: left big stage + right panel */
+    .grid{
+      position: relative;
+      height: calc(100vh - 56px);
+      z-index: 1;
+    };
+
+    .card{
+      background: var(--panel);
+      border: 1px solid var(--stroke);
+      border-radius: 18px;
+      box-shadow: 0 20px 50px rgba(0,0,0,.28);
+      overflow:hidden;
+    }
+
+    /* --- STAGE --- */
+    .stageWrap{
+      position: relative;
+      background: transparent !important;
+      overflow: hidden;
+      z-index: 1;
+    }
+
+    .stageCanvas{ 
+      background: transparent !important;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 5;
+    }
+
+    /* winners overlay inside stage (no extra bar) */
+    .winnersOverlay{
+      display: none; /* Versteckt - wir nutzen jetzt Pergamente */
+      position:absolute;
+      left: 18px;
+      bottom: 18px;
+      width: 520px;
+      max-height: 320px;
+      overflow:auto;
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.28);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 12px 30px rgba(0,0,0,.28);
+    }
+    .winnersOverlay h3{
+      margin:0 0 8px;
+      font-size: 14px;
+      letter-spacing:.4px;
+      color: rgba(234,240,255,.92);
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .winnersOverlay .muted{ color: var(--muted); font-size: 12px; }
+    .winnersOverlay ol{
+      margin: 0;
+      padding-left: 20px;
+    }
+    .winnersOverlay li{
+      margin: 6px 0;
+      line-height:1.25;
+    }
+    .clan{
+      color: #cfe1ff;
+      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(122,168,255,.28);
+      background: rgba(122,168,255,.10);
+      margin-left: 6px;
+    }
+
+    /* ===== BRENNENDE PERGAMENT-ZETTEL ===== */
+    .parchment-container{
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 100;
+      overflow: hidden;
+    }
+
+    /* Kleine Pergament-Schnipsel */
+    .parchment{
+      position: absolute;
+      width: 310px;
+      height: auto;
+      transform-origin: center;
+      animation: flyFromFire 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+      opacity: 0;
+      filter: drop-shadow(0 8px 20px rgba(0,0,0,.6)) drop-shadow(0 0 25px rgba(255,120,30,.4));
+    }
+
+    .parchment img{
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .parchment-content{
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 20px 30px;
+      gap: 8px;
+      z-index: 4;
+    }
+
+    .parchment-number{
+      font-size: 42px;
+      font-weight: 900;
+      color: #3d2814;
+      text-shadow: 
+        1px 1px 0 rgba(0,0,0,.3),
+        0 0 10px rgba(255,255,255,.4);
+      margin: 0;
+      font-family: Georgia, serif;
+      letter-spacing: -1px;
+      flex-shrink: 0;
+    }
+
+    .parchment-info{
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      flex-grow: 1;
+    }
+
+    .parchment-name{
+      font-size: 18px;
+      font-weight: bold;
+      color: #1a0f08;
+      margin: 0;
+      text-shadow: 0 1px 1px rgba(255,255,255,.6);
+      letter-spacing: 0.3px;
+    }
+
+    .parchment-clan{
+      font-size: 13px;
+      color: #4a3a2a;
+      font-style: italic;
+      margin: 0;
+    }
+
+    /* Animation: Aus dem Feuer fliegen */
+    @keyframes flyFromFire{
+      0%{
+        top: 55%;
+        left: 50%;
+        transform: translate(-50%, 0) scale(0.2) rotate(0deg);
+        opacity: 0;
+        filter: brightness(3) blur(5px) saturate(2) drop-shadow(0 0 30px rgba(255,140,40,.9));
+      }
+      15%{
+        opacity: 0.4;
+        filter: brightness(2.5) blur(3px) saturate(1.8) drop-shadow(0 0 25px rgba(255,140,40,.7));
+      }
+      40%{
+        opacity: 0.8;
+        filter: brightness(1.6) blur(1px) saturate(1.3) drop-shadow(0 4px 15px rgba(0,0,0,.5));
+      }
+      100%{
+        top: var(--by);
+        left: var(--bx);
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1) rotate(var(--rot));
+        filter: brightness(1) blur(0) saturate(1) drop-shadow(0 8px 20px rgba(0,0,0,.6));
+      }
+    }
+
+    /* --- RIGHT PANEL --- */
+    .side{ padding: 16px; }
+    .side h2{ margin:0 0 6px; font-size:18px; }
+    .small{ font-size: 12px; color: var(--muted); line-height:1.45; }
+    .kpis{
+      display:grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-top: 10px;
+    }
+    .kpi{
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      border-radius: 16px;
+      padding: 12px;
+    }
+    .kpi .n{ font-size: 22px; font-weight: 900; }
+    .kpi .l{ font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .hint{
+      margin-top: 12px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      border-radius: 16px;
+      padding: 12px;
+    }
+
+
+    /* ===============================
+      FULLSCREEN STAGE (LEFT / GREEN)
+      =============================== */
+
+    .gridFullscreen{
+      position: relative;
+      height: calc(100vh - 56px); /* Header-Höhe */
+    }
+
+    .gridFullscreen > section{
+      height: calc(100vh - 56px);
+    }
+
+    .gridFullscreen .stageWrap{
+      height: calc(100vh - 56px);
+      width: 100%;
+      border-radius: 0;
+      box-shadow: none;
+    } 
+    /* Canvas soll wirklich alles ausfüllen */
+    .stageCanvas{
+      width: 100% !important;
+      height: 100% !important;
+    }
+    /* ===============================
+      REMOVE "CARD LOOK" COMPLETELY
+      =============================== */
+
+    /* falls irgendwo noch card-Styling greift */
+    .gridFullscreen section{
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      padding: 0;
+    }
+
+    /* ===============================
+      WINNERS: nur Overlay, kein Kasten
+      ============================== */
+
+    .winnersOverlay{
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      backdrop-filter: none;
+    }
+
+    .winnersOverlay h3,
+    .winnersOverlay ol,
+    .winnersOverlay .muted{
+      text-shadow: 0 2px 10px rgba(0,0,0,.45);
+    }
+
+    /* ===== FORCE FULLSCREEN STAGE + RIGHT OVERLAY ===== */
+    .gridFullscreen{
+      position: relative !important;
+      height: calc(100vh - 56px) !important;
+      display: block !important;            /* IMPORTANT: disables old grid columns */
+    }
+
+    /* stage takes whole area */
+    .gridFullscreen .stageWrap{
+      height: calc(100vh - 56px) !important;
+      width: 100% !important;
+      border-radius: 0 !important;
+    }
+    .gridFullscreen .stageCanvas{
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    /* right overlay top-right */
+    .sideOverlay{
+      position: absolute !important;
+      top: 82px !important;                /* below header */
+      right: 18px !important;
+      width: 420px !important;
+      z-index: 50 !important;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+
+    /* your wrapper is sidePlain (not side) */
+    .sideOverlay .sidePlain{
+      padding: 0 !important;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+
+    /* remove ALL box look (kpis/kpi/hint) */
+    .sideOverlay .kpis,
+    .sideOverlay .kpi,
+    .sideOverlay .hint{
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+
+    /* KPI inline text */
+    .sideOverlay .kpis{
+      display: flex !important;
+      gap: 22px !important;
+      margin-top: 10px !important;
+      margin-bottom: 12px !important;
+    }
+    .sideOverlay .kpi .n{
+      font-size: 18px !important;
+      font-weight: 900 !important;
+      display: inline-block !important;
+      margin-right: 8px !important;
+    }
+    .sideOverlay .kpi .l{
+      display: inline-block !important;
+      font-size: 12px !important;
+      color: var(--muted) !important;
+    } 
+    /* make text readable over water */
+    .sideOverlay *{
+      text-shadow: 0 2px 10px rgba(0,0,0,.45) !important;
+    }
+
+    /* ===== OLD WINNERS BUTTON & OVERLAY ===== */
+    .oldWinnersBtn{
+      margin-top: 8px;
+      padding: 0;
+      background: transparent;
+      border: none;
+      color: #000;
+      font-weight: 900;
+      font-size: 12px;
+      cursor: pointer;
+      text-align: left;
+      transition: opacity 0.2s ease;
+      text-shadow: none !important;
+      line-height: 1.45;
+    }
+    .oldWinnersBtn:hover{
+      opacity: 0.7;
+    }
+
+    .screenshotOverlay{
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.92);
+      z-index: 9999;
+      overflow-y: auto;
+      padding: 40px;
+    }
+    .screenshotOverlay.active{
+      display: block;
+    }
+    .overlayHeader{
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+    }
+    .overlayHeader h2{
+      color: var(--text);
+      margin: 0;
+      font-size: 24px;
+    }
+    .closeOverlayBtn{
+      background: rgba(255,255,255,.15);
+      border: 1px solid rgba(255,255,255,.25);
+      color: var(--text);
+      padding: 8px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+    .closeOverlayBtn:hover{
+      background: rgba(255,255,255,.25);
+    }
+    .screenshotGrid{
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+      gap: 20px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    .screenshotItem{
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 12px;
+      overflow: hidden;
+      background: rgba(255,255,255,.05);
+      transition: transform 0.2s ease;
+    }
+    .screenshotItem:hover{
+      transform: scale(1.02);
+    }
+    .screenshotItem img{
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+    .noScreenshots{
+      color: var(--muted);
+      text-align: center;
+      padding: 60px 20px;
+      font-size: 16px;
+    }
+
+
+  </style>
+</head>
+
+<body>
+  <!-- Background video -->
+  <video autoplay muted loop playsinline class="bg-video">
+    <source src="/public/video.mp4/Vikings-at-the-fire.mp4" type="video/mp4">
+  </video>
+
+  <div class="bg"></div>
+
+  <!-- Container für brennende Pergamente -->
+  <div class="parchment-container" id="parchmentContainer"></div>
+
+  <header>
+    <div class="wrap">
+      <div class="row">
+        <div class="brand">
+          <span>K534 Event Draw</span>
+          <span class="datetime" id="headerDateTime"></span>
+        </div>
+        <div class="pill"><span class="dot"></span>LIVE VIEW</div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="grid gridFullscreen">
+      <!-- LEFT: Stage -->
+      <section>
+        <div class="stageWrap" id="stageWrap">
+          <canvas class="stageCanvas" id="stageCanvas"></canvas>
+
+          <!-- Animiertes Feuer -->
+          <div class="fire-container">
+            <div class="fire" id="fire">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+          </div>
+
+          <div class="winnersOverlay" id="winnersOverlay">
+            <h3>
+              <span>🏆 Winners</span>
+              <span class="muted" id="lastUpdate">—</span>
+            </h3>
+            <div class="muted" id="winnersHint">Noch keine Ziehung.</div>
+            <ol id="winnersList"></ol>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT: Info -->
+      <aside class="sideOverlay">
+        <div class="sidePlain">
+          <h2>Event Status</h2>
+          <div class="small">K534</div>
+
+          <div class="kpis">
+            <div class="kpi">
+              <div class="n" id="poolCount">0</div>
+              <div class="l">Participants in pool</div>
+            </div>
+            <div class="kpi">
+              <div class="n" id="clansCount">0</div>
+              <div class="l">Tribes detected</div>
+            </div>
+          </div>
+
+          <div class="hint">
+            <div style="font-weight:900; margin-bottom:6px;">Ceremony</div>
+            <div class="small">
+              • Admin upload list & start the draw.<br/>
+              • Server choose winners (fair).<br/>
+              • They are revealed here one by one.
+            </div>
+            <div class="oldWinnersBtn" onclick="showOldWinners()">
+              📜 View old winners
+            </div>
+          </div>
+
+          
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <!-- Old Winners Screenshot Overlay -->
+  <div class="screenshotOverlay" id="screenshotOverlay">
+    <div class="overlayHeader">
+      <h2>
+        🏆 Old Winners
+      </h2>  
+      <button class="closeOverlayBtn" onclick="hideOldWinners()">Close</button>
+    </div>
+    <div class="screenshotGrid" id="screenshotGrid">
+      <div class="noScreenshots">Loading screenshots...</div>
+    </div>
+  </div>
+
+<script>
+  const POLL_MS = 1500;
+
+  const stageWrap = document.getElementById("stageWrap");
+  const canvas = document.getElementById("stageCanvas");
+  const ctx = canvas.getContext("2d", { alpha: true });
+
+  const poolCountEl = document.getElementById("poolCount");
+  const clansCountEl = document.getElementById("clansCount");
+  const lastUpdateEl = document.getElementById("lastUpdate");
+
+  const winnersHint = document.getElementById("winnersHint");
+  const winnersList = document.getElementById("winnersList");
+
+  let W=0,H=0,DPR=Math.max(1, Math.floor(window.devicePixelRatio||1));
+  function resize(){
+    const r = canvas.getBoundingClientRect();
+    W = Math.floor(r.width);
+    H = Math.floor(r.height);
+    canvas.width = W*DPR;
+    canvas.height = H*DPR;
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+  }
+  window.addEventListener("resize", resize);
+
+  // State tracking
+  let lastWinnersKey = "";
+  let isCeremony = false;
+  let isFirstPoll = true; // Flag für ersten Poll
+
+  // Visual tuning (desktop -> can be heavier)
+  const MAX_NAME_SPARKS = 70;
+  const REVEAL_EVERY_MS = 350;     // winners appear one-by-one
+  const CEREMONY_MS = 5200;
+
+  // Helpers
+  function fmtTime(ts){ return new Date(ts).toLocaleString(); }
+  function escapeHTML(s){
+    return (s ?? "").toString()
+      .replaceAll("&","&amp;").replaceAll("<","&lt;")
+      .replaceAll(">","&gt;").replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+  function updateKPIs(s){
+    poolCountEl.textContent = s.pool?.length ?? 0;
+    const a = s.clanA?.tag ? 1 : 0;
+    const b = s.clanB?.tag ? 1 : 0;
+    clansCountEl.textContent = a+b;
+    lastUpdateEl.textContent = fmtTime(Date.now());
+  }
+
+  // --- Scene particles ---
+  const glints = [];
+  const sparks = [];
+  let altar = {cx:0, cy:0};
+  let t0 = 0;
+
+  function resetScene(){
+    glints.length = 0;
+    sparks.length = 0;
+
+    // Funken-Partikel für Feuer-Effekt
+    for(let i=0;i<120;i++){
+      glints.push({
+        x: Math.random()*W,
+        y: Math.random()*H,
+        vx:(Math.random()-0.5)*0.3,
+        vy:(Math.random()-0.5)*0.3,
+        a: 0.1+Math.random()*0.2,
+        r: 1+Math.random()*3
+      });
+    }
+
+    for(let i=0;i<MAX_NAME_SPARKS;i++){
+      sparks.push(makeSpark());
+    }
+  }
+
+  function makeSpark(){
+    // spawn from random edge
+    const side = Math.floor(Math.random()*4);
+    let x,y;
+    if(side===0){ x=-20; y=Math.random()*H; }
+    if(side===1){ x=W+20; y=Math.random()*H; }
+    if(side===2){ x=Math.random()*W; y=-20; }
+    if(side===3){ x=Math.random()*W; y=H+20; }
+    return { x,y, vx:0, vy:0, a:0, text:"", clan:"" };
+  }
+
+  function drawBackdrop(intensity){
+    // Ziel = Feuer im Foto (Mitte-unten)
+    const cx = W * 0.50;
+    const cy = H * 0.58;
+
+    // Zeichne flackerndes Feuer-Zentrum
+    const flicker = Math.sin(Date.now() * 0.003) * 0.15 + Math.cos(Date.now() * 0.005) * 0.1;
+    const fireSize = 80 + flicker * 20;
+    
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    
+    // Haupt-Feuer Glow
+    const glow = ctx.createRadialGradient(cx, cy, 10, cx, cy, fireSize * (1 + intensity * 0.3));
+    glow.addColorStop(0, `rgba(255,220,120,${0.6 * intensity})`);
+    glow.addColorStop(0.3, `rgba(255,140,60,${0.4 * intensity})`);
+    glow.addColorStop(0.6, `rgba(255,80,30,${0.2 * intensity})`);
+    glow.addColorStop(1, "rgba(255,50,20,0)");
+    
+    ctx.fillStyle = glow;
+    ctx.fillRect(cx - fireSize, cy - fireSize, fireSize * 2, fireSize * 2);
+    
+    ctx.restore();
+
+    return { cx, cy };
+  }
+
+
+  // name sparks (visual) -> fly into fire
+  let poolPick = [];
+  function pickFromPool(pool){
+    const a = pool.slice(0);
+    for(let i=a.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a.slice(0, Math.min(MAX_NAME_SPARKS, a.length));
+  }
+
+  function drawNameSparks(dt, intensity){
+    const {cx, cy} = altar;
+
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+
+    for(const s of sparks){
+      // Namen fliegen ins Feuer
+      const tx = cx + (Math.random()-0.5)*25;
+      const ty = cy + (Math.random()-0.5)*25;
+
+      const dx = tx - s.x;
+      const dy = ty - s.y;
+      const dist = Math.max(50, Math.hypot(dx,dy));
+      const sp = (isCeremony ? 0.65 : 0.22) + intensity*0.25;
+
+      s.vx = (dx/dist) * (dist*0.015) * sp;
+      s.vy = (dy/dist) * (dist*0.015) * sp;
+
+      s.x += s.vx * dt;
+      s.y += s.vy * dt;
+
+      s.a = Math.min(1, s.a + dt*0.0015*(isCeremony?1.6:0.7));
+
+      const near = Math.hypot(s.x-cx, s.y-cy) < 40;
+      if(near){
+        // Im Feuer verbrannt - respawn vom Rand
+        Object.assign(s, makeSpark(), { text: s.text, clan: s.clan, a: 0.1 });
+      }
+
+      const r = 10 + intensity*10;
+      
+      // Feuer-Farben für die Partikel
+      const gg = ctx.createRadialGradient(s.x, s.y, 1, s.x, s.y, r*3.5);
+      gg.addColorStop(0, `rgba(255,220,120,${0.5*s.a})`);
+      gg.addColorStop(0.3, `rgba(255,160,70,${0.35*s.a})`);
+      gg.addColorStop(0.6, `rgba(255,100,40,${0.2*s.a})`);
+      gg.addColorStop(1, `rgba(255,80,30,0)`);
+
+      ctx.fillStyle = gg;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, r, 0, Math.PI*2);
+      ctx.fill();
+
+      // Namen-Text mit Glow
+      ctx.globalAlpha = 0.3*s.a;
+      ctx.shadowColor = "rgba(255,150,50,0.8)";
+      ctx.shadowBlur = 8;
+      ctx.fillStyle = "rgba(255,240,200,1)";
+      ctx.font = "bold 13px system-ui, Segoe UI, Roboto, Arial";
+      ctx.fillText(s.text, s.x + 14, s.y - 12);
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.restore();
+  }
+
+  function loop(ts){
+    // Canvas-Animation deaktiviert
+    // requestAnimationFrame(loop);
+  }
+
+  // --- Winners als brennende Pergamente ---
+  const parchmentContainer = document.getElementById('parchmentContainer');
+  let currentParchments = [];
+
+  function clearWinners(){
+    winnersList.innerHTML = "";
+    winnersHint.textContent = "Noch keine Ziehung.";
+    // Lösche alle Pergamente
+    currentParchments.forEach(p => p.remove());
+    currentParchments = [];
+    parchmentContainer.innerHTML = '';
+  }
+
+  function createParchment(winner, index, total){
+    const parch = document.createElement('div');
+    parch.className = 'parchment';
+    
+    const screenW = window.innerWidth;
+    const screenH = window.innerHeight;
+    
+    // 3 Spalten, vertikale Auflistung von oben nach unten
+    const startY = 100; // Start bei Event Status Höhe
+    const parchmentHeight = 85; // Abstand zwischen Pergamenten
+    const leftMargin = 40; // Linker Rand
+    const eventStatusWidth = 450; // Event Status Bereich rechts freihalten
+    
+    const cols = 3;
+    const col = index % cols; // 0, 1, 2, 0, 1, 2...
+    const row = Math.floor(index / cols); // Zeile
+    
+    const colWidth = (screenW - eventStatusWidth - leftMargin) / cols;
+    
+    const bx = leftMargin + (col * colWidth) + (colWidth / 2);
+    const by = startY + (row * parchmentHeight);
+    
+    const rot = (Math.random() - 0.5) * 12; // Kleinere Rotation
+    
+    parch.style.setProperty('--bx', bx + 'px');
+    parch.style.setProperty('--by', by + 'px');
+    parch.style.setProperty('--rot', rot + 'deg');
+    parch.style.animationDelay = (index * 0.5) + 's';
+    
+    parch.innerHTML = `
+      <img src="/public/img/parchment-snippet.png" alt="">
+      <div class="parchment-content">
+        <div class="parchment-number">#${index + 1}</div>
+        <div class="parchment-info">
+          <div class="parchment-name">${escapeHTML(winner.n)}</div>
+          <div class="parchment-clan">${escapeHTML(winner.c)}</div>
+        </div>
+      </div>
+    `;
+    
+    return parch;
+  }
+
+  function revealWinnersSequential(winners){
+    winnersList.innerHTML = "";
+    winnersHint.textContent = "";
+    
+    // Lösche alte Pergamente
+    currentParchments.forEach(p => p.remove());
+    currentParchments = [];
+    parchmentContainer.innerHTML = '';
+    
+    // Erstelle Pergamente - kommen direkt aus dem Feuer
+    winners.forEach((winner, index) => {
+      const parch = createParchment(winner, index, winners.length);
+      parchmentContainer.appendChild(parch);
+      currentParchments.push(parch);
+    });
+  }
+
+  // Ceremony trigger
+  function startCeremony(pool, winners){
+    if(isCeremony) return;
+    isCeremony = true;
+    stageWrap.classList.add("revealFlash");
+
+    // choose visible name sparks (200+ safe)
+    poolPick = pickFromPool(pool);
+    for(let i=0;i<sparks.length;i++){
+      const p = poolPick[i % poolPick.length] || {n:"Player", c:""};
+      sparks[i].text = p.n || "Player";
+      sparks[i].clan = p.c || "";
+      sparks[i].a = 0;
+      Object.assign(sparks[i], makeSpark(), { text: sparks[i].text, clan: sparks[i].clan });
+    }
+
+    // Wait a bit, then reveal winners one-by-one
+    setTimeout(() => {
+      revealWinnersSequential(winners);
+      isCeremony = false;
+    }, CEREMONY_MS);
+  }
+
+  async function poll(){
+    try{
+      const r = await fetch("/api/state", { cache:"no-store" });
+      const s = await r.json();
+      updateKPIs(s);
+
+      const pool = (s.pool || []).map(x => ({
+        n: x.n ?? x.name ?? x[0] ?? "",
+        c: x.c ?? x.clanTag ?? x[1] ?? ""
+      }));
+
+      const winners = (s.winners || []).map(x => ({
+        n: x.n ?? x.name ?? "",
+        c: x.c ?? x.clanTag ?? ""
+      }));
+
+      const key = winners.map(w => `${w.n}|${w.c}`).join(";");
+      const hasWinners = winners.length > 0;
+
+      // Beim ersten Poll (Seite neu geladen): Keine Animation, nur Daten merken
+      if(isFirstPoll){
+        isFirstPoll = false;
+        if(hasWinners){
+          lastWinnersKey = key;
+          // Keine Animation - nur Key speichern
+        }
+      } else {
+        // Bei nachfolgenden Polls: Nur Animation wenn sich Key ändert
+        if(hasWinners && key && key !== lastWinnersKey && pool.length > 0){
+          lastWinnersKey = key;
+          startCeremony(pool, winners);
+        }
+      }
+
+      if(!hasWinners && !isCeremony){
+        clearWinners();
+      }
+
+    } catch(e){
+      // do nothing hard; keep visuals running
+    } finally{
+      setTimeout(poll, POLL_MS);
+    }
+  }
+
+  // Update UTC datetime in header
+  function updateHeaderDateTime(){
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
+    const timeStr = now.toISOString().split('T')[1].split('.')[0]; // HH:MM:SS
+    document.getElementById('headerDateTime').textContent = `${dateStr} ${timeStr} UTC`;
+  }
+  updateHeaderDateTime();
+  setInterval(updateHeaderDateTime, 1000);
+
+  // init
+  resize();
+  resetScene();
+  // requestAnimationFrame(loop); // Canvas-Animation deaktiviert
+  poll();
+
+  // ===== OLD WINNERS OVERLAY =====
+  async function showOldWinners(){
+    const overlay = document.getElementById('screenshotOverlay');
+    const grid = document.getElementById('screenshotGrid');
+    
+    overlay.classList.add('active');
+    grid.innerHTML = '<div class="noScreenshots">Lade Screenshots...</div>';
+    
+    try{
+      const res = await fetch('/api/screenshots');
+      const data = await res.json();
+      
+      if(!data.screenshots || data.screenshots.length === 0){
+        grid.innerHTML = '<div class="noScreenshots">Noch keine alten Gewinnerlisten vorhanden.</div>';
+        return;
+      }
+      
+      grid.innerHTML = data.screenshots.map(filename => `
+        <div class="screenshotItem">
+          <img src="/public/screenshots/${encodeURIComponent(filename)}" alt="Gewinnerliste" />
+        </div>
+      `).join('');
+    } catch(e){
+      grid.innerHTML = '<div class="noScreenshots">Fehler beim Laden der Screenshots.</div>';
+      console.error('Error loading screenshots:', e);
+    }
+  }
+
+  function hideOldWinners(){
+    document.getElementById('screenshotOverlay').classList.remove('active');
+  }
+
+  // ESC key closes overlay
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape'){
+      hideOldWinners();
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+<h2>Login</h2>
+<input id="u" placeholder="User"><br>
+<input id="p" type="password" placeholder="Passwort"><br>
+<button onclick="login()">Login</button>
+<p id="m"></p>
+<script>
+async function login(){
+  const r = await fetch("/api/login", {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ username:u.value, password:p.value })
+  });
+  const j = await r.json();
+  if(j.ok) location.href="/admin";
+  else m.innerText="Login fehlgeschlagen";
+}
+</script>
